@@ -24,7 +24,7 @@ flowchart LR
 
 ## Demo evidence and scope
 
-In a **user-reported spoken Egyptian Arabic demo**, the agent confirmed a cleaning appointment, n8n created the correct one-hour calendar event, the customer and appointment rows appeared in Google Sheets, and the confirmation SMS arrived on a test phone. This describes one controlled test. The n8n Executions view did not show saved runs during this review, and supporting screenshots were not supplied, so the complete call-to-SMS sequence is not independently verified here.
+In a **user-reported spoken Egyptian Arabic demo**, the agent confirmed a cleaning appointment, n8n created the correct one-hour calendar event, the customer and appointment rows appeared in Google Sheets, and the confirmation SMS arrived on a test phone. This describes one controlled test. Saved n8n executions are visible for this workflow, including a successful run on 15 October 2026 at 14:51:15 (execution #712). The execution status supports that the workflow ran; the spoken interaction and SMS arrival on the test phone remain reported by the project owner rather than independently replayed here.
 
 The demo used a restricted test number and a temporary webhook. It is **not a live customer booking service**. Built and tested with AI assistance.
 
