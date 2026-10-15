@@ -1,0 +1,2432 @@
+{
+  "name": "Nile Auto — Safe Booking Draft (Vonage SMS)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "configure-after-import",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Incoming agent request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        64,
+        1136
+      ],
+      "notes": "Draft POST webhook. Do not use a production URL or connect the live voice agent before full testing."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.intent === 'booking' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Booking request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        512,
+        1136
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.valid_booking_request === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Details and business hours valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        960,
+        912
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'invalid_request', message: /^\\d{4}-\\d{2}-\\d{2}$/.test(String($json.date ?? '')) && String($json.date) < $now.setZone('Africa/Cairo').toISODate() ? 'That date has already passed. Please choose a future date and Cairo time.' : 'Please choose a valid service, date and time within our booking hours.', reason: $json.validation_reason ?? null, service: $json.service ?? null, date: $json.date ?? null, time: $json.time ?? null, alternatives: $json.alternatives ?? [], booking_id: $json.booking_id ?? null, sms_status: $json.sms_status ?? null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Ask for missing or valid details",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        992
+      ],
+      "notes": "JSON response for ElevenLabs. Message is provisional where booking is not completed."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.service === 'cleaning' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Cleaning service?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2304,
+        816
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "timeMin": "={{ $json.start }}",
+        "timeMax": "={{ $json.end }}",
+        "options": {}
+      },
+      "name": "Cleaning calendar - check slot",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        2528,
+        752
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Read-only availability lookup on the separate private demo calendar."
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "timeMin": "={{ $json.start }}",
+        "timeMax": "={{ $json.end }}",
+        "options": {}
+      },
+      "name": "Repairs calendar - check slot",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        2512,
+        976
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Read-only availability lookup on the separate private demo calendar."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ typeof $json.available === 'boolean' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Calendar check succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2976,
+        816
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.available === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Requested slot free?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        752
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "returnAll": true,
+        "timeMin": "={{ DateTime.fromISO($json.date,{zone:'Africa/Cairo'}).startOf('day').toISO() }}",
+        "timeMax": "={{ DateTime.fromISO($json.date,{zone:'Africa/Cairo'}).plus({days:1}).startOf('day').toISO() }}",
+        "options": {}
+      },
+      "name": "Find alternatives in same calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        4928,
+        1344
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "Configured deterministic logic; test before connecting to the live agent."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ Array.isArray($json.alternatives) && $json.alternatives.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Alternative slots found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5888,
+        1536
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'alternative_times', message: 'The requested time is busy. These alternative times are available.', service: $json.service ?? null, date: $json.date ?? null, time: $json.time ?? null, alternatives: $json.alternatives ?? [], booking_id: $json.booking_id ?? null, sms_status: $json.sms_status ?? null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Offer available alternatives",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        6176,
+        1440
+      ],
+      "notes": "JSON response for ElevenLabs. Message is provisional where booking is not completed."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'no_times_found', message: 'The requested time is busy. Please choose another day.', service: $json.service ?? null, date: $json.date ?? null, time: $json.time ?? null, alternatives: $json.alternatives ?? [], booking_id: $json.booking_id ?? null, sms_status: $json.sms_status ?? null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "No slots - ask for another day",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        6176,
+        1632
+      ],
+      "notes": "JSON response for ElevenLabs. Message is provisional where booking is not completed."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.confirmed === true && !!$json.name && !!$json.phone }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Customer confirmed booking?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3424,
+        752
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'slot_available', message: 'This time is currently free. Ask the caller whether they want to book it.', service: $json.service ?? null, date: $json.date ?? null, time: $json.time ?? null, alternatives: $json.alternatives ?? [], booking_id: $json.booking_id ?? null, sms_status: $json.sms_status ?? null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Return free slot - await caller choice",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3824,
+        656
+      ],
+      "notes": "JSON response for ElevenLabs. Message is provisional where booking is not completed."
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;\nconst demo=d.demo_test===true && typeof d.name==='string' && d.name.trim().length>=2 && d.phone==='CONFIGURE_TEST_NUMBER' && /^demo-[a-z0-9-]{1,90}$/.test(d.request_id);\nif(!demo) return [{json:{...d,booking_write_ready:false,note:'Only an explicitly confirmed booking to the verified test phone may reach calendar creation.'}}];\nconst id='nile'+Array.from(d.request_id).map(c=>c.codePointAt(0).toString(16).padStart(6,'0')).join('');\nreturn [{json:{...d,booking_write_ready:true,calendar_event_id:id}}];"
+      },
+      "name": "Protect against duplicates and conflicts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3648,
+        1024
+      ],
+      "notes": "Configured deterministic logic; test before connecting to the live agent."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.booking_write_ready === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Safe to create booking?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3856,
+        1024
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'booking_not_created', message: 'Live booking is disabled in this unpublished demo. No appointment was created.', service: $json.service ?? null, date: $json.date ?? null, time: $json.time ?? null, booking_id: null, sms_status: 'not_configured' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Return existing booking or changed slot",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        4080,
+        1248
+      ],
+      "notes": "JSON response for ElevenLabs. Message is provisional where booking is not completed."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.service === 'cleaning' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Create in cleaning calendar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4864,
+        880
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "start": "={{ $json.start }}",
+        "end": "={{ $json.end }}",
+        "useDefaultReminders": false,
+        "additionalFields": {
+          "description": "Fictional n8n logbook test. Not a customer appointment.",
+          "id": "={{ $json.calendar_event_id }}",
+          "summary": "={{ 'Demo ' + $json.service + ' appointment' }}"
+        }
+      },
+      "name": "Cleaning calendar - create appointment",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        5216,
+        768
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Demo-only event creation. The preceding gate rejects real callers; this workflow must remain unpublished."
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "start": "={{ $json.start }}",
+        "end": "={{ $json.end }}",
+        "useDefaultReminders": false,
+        "additionalFields": {
+          "description": "Fictional n8n logbook test. Not a customer appointment.",
+          "id": "={{ $json.calendar_event_id }}",
+          "summary": "={{ 'Demo ' + $json.service + ' appointment' }}"
+        }
+      },
+      "name": "Repairs calendar - create appointment",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        5216,
+        960
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Demo-only event creation. The preceding gate rejects real callers; this workflow must remain unpublished."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ !!$json.id }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Appointment saved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5440,
+        864
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "name": "Sheets - customer record",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        5888,
+        624
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Append a row to the private demo logbook. Google Sheets OAuth needs reconnection before execution can succeed."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Sheets - appointment record",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        6288,
+        624
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Append a row to the private demo logbook. Google Sheets OAuth needs reconnection before execution can succeed."
+    },
+    {
+      "parameters": {},
+      "name": "SMS - booking confirmation",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5888,
+        2144
+      ],
+      "notes": "EXTERNAL ACTION PENDING: choose destination and credential, then replace this no-op node. It cannot send, write, or book."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.sms_status === 'accepted' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "SMS accepted for sending?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        6112,
+        2144
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {},
+      "name": "Sheets - SMS status sent or pending",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        6336,
+        1856
+      ],
+      "notes": "EXTERNAL ACTION PENDING: choose destination and credential, then replace this no-op node. It cannot send, write, or book."
+    },
+    {
+      "parameters": {},
+      "name": "Sheets - SMS failed follow-up",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        6336,
+        2240
+      ],
+      "notes": "EXTERNAL ACTION PENDING: choose destination and credential, then replace this no-op node. It cannot send, write, or book."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'demo_booking_confirmed', message: $('Prepare SMS log row').first().json.provider_status === 'accepted' ? 'Fictional appointment created in a demo calendar. Confirmation SMS accepted for sending.' : 'Fictional appointment created in a demo calendar. Confirmation SMS could not be sent; staff follow-up needed.', booking_id: $('Appointment saved?').first().json.id ?? null, sms_status: $('Prepare SMS log row').first().json.provider_status }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Return confirmed booking and SMS status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        7168,
+        1008
+      ],
+      "notes": "JSON response for ElevenLabs. Message is provisional where booking is not completed."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.intent === 'general_question' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "General question?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4544,
+        1856
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{...$input.first().json,answer_category:'general'}}];"
+      },
+      "name": "General service information",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5072,
+        1792
+      ],
+      "notes": "Configured deterministic logic; test before connecting to the live agent."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.intent === 'repair_question' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Repair question?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4768,
+        2048
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{...$input.first().json,answer_category:'repairs'}}];"
+      },
+      "name": "Repair scope and assessment information",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5072,
+        1984
+      ],
+      "notes": "Configured deterministic logic; test before connecting to the live agent."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.intent === 'battery_question' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Battery question?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4992,
+        2208
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{...$input.first().json,answer_category:'batteries'}}];"
+      },
+      "name": "Battery service information",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5232,
+        2256
+      ],
+      "notes": "Configured deterministic logic; test before connecting to the live agent."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.supported === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Answer supported by business documents?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5456,
+        1952
+      ],
+      "notes": "Configured true/false routing; requires branch tests."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "name": "Sheets - inquiry log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        5888,
+        1952
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Append a row to the private demo logbook. Google Sheets OAuth needs reconnection before execution can succeed."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'answer_in_agent', message: 'Answer from the approved business documents in the caller language.', service: $('Normalize request').first().json.service ?? null }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Return guidance to voice agent",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        6112,
+        1952
+      ],
+      "notes": "JSON response for ElevenLabs. Message is provisional where booking is not completed."
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;\nconst original=$('Normalize request').first().json;\nconst booking=original.intent==='booking';\nconst reason=booking?(d.error?.message??d.message??(d.alternative_lookup_failed?'Calendar alternatives lookup failed':'Calendar booking check or creation failed')):'Customer complaint/refund/issue';\nreturn [{json:{...original,details:booking?reason:original.details??original.question,case_status:'needs_human',refund_approved:false,follow_up_reason:reason,staff_notification:'case_logged_not_sent'}}];"
+      },
+      "name": "Capture complaint refund or issue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5696,
+        1248
+      ],
+      "notes": "Configured deterministic logic; test before connecting to the live agent."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at_cairo",
+              "displayName": "created_at_cairo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "issue_summary",
+              "displayName": "issue_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "assigned_to",
+              "displayName": "assigned_to",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "resolved_at_cairo",
+              "displayName": "resolved_at_cairo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "name": "Sheets - human follow-up case",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        6112,
+        1248
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Append a row to the private demo logbook. Google Sheets OAuth needs reconnection before execution can succeed."
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;\nconst caseLogged=!d.error;\nreturn [{json:{...d,case_logged:caseLogged,staff_notification:caseLogged?'case_logged_not_sent':'case_log_failed'}}];"
+      },
+      "name": "Notify staff - channel to choose",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6336,
+        1248
+      ],
+      "notes": "Configured deterministic logic; test before connecting to the live agent."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.case_logged ? ($('Normalize request').first().json.intent === 'booking' ? 'booking_needs_human' : 'human_follow_up') : 'case_log_failed', message: $json.case_logged ? ($('Normalize request').first().json.intent === 'booking' ? 'The calendar could not confirm this booking. A person must review the case; no appointment was promised.' : 'Your request was recorded for a person to review. No refund or repair outcome was promised.') : 'I could not record your request. Please contact the business directly so a person can help.', staff_notification: $json.staff_notification, sms_status: 'not_configured' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Return follow-up acknowledgement",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        6720,
+        1248
+      ],
+      "notes": "JSON response for ElevenLabs. Message is provisional where booking is not completed."
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst intentRaw = String(body.intent ?? (body.date && body.time ? 'booking' : 'issue')).trim().toLowerCase();\nconst intent = ['check_availability','book_appointment','booking'].includes(intentRaw) ? 'booking' : intentRaw;\nconst serviceRaw = String(body.service ?? 'cleaning').trim().toLowerCase();\nconst service = ['battery','battery_change','battery_test'].includes(serviceRaw) ? 'battery' : ['puncture','tire_repair'].includes(serviceRaw) ? 'puncture' : ['tire','tires','tire_replacement','balancing'].includes(serviceRaw) ? 'tires' : ['assessment','unknown_repair'].includes(serviceRaw) ? 'assessment' : serviceRaw;\nconst rawPhone=String(body.phone??'').trim().replace(/[\\s()-]/g,'');\nconst phone=/^01\\d{9}$/.test(rawPhone)?'+20'+rawPhone.slice(1):/^20\\d{10}$/.test(rawPhone)?'+'+rawPhone:rawPhone;\nreturn [{json:{intent,service,date:String(body.date??''),time:String(body.time??''),name:String(body.name??'').trim(),phone,question:String(body.question??'').trim(),confirmed:body.confirmed===true,demo_test:body.demo_test===true,supported:body.supported===true,request_id:String(body.request_id??''),details:body.details??null}}];"
+      },
+      "name": "Normalize request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        1136
+      ],
+      "notes": "Deterministic transformation; verify with test data."
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;\nconst durations={cleaning:60,battery:30,puncture:60,tires:90,assessment:30};\nconst duration=durations[d.service];\nconst datePattern=/^\\d{4}-\\d{2}-\\d{2}$/;\nconst timePattern=/^(?:[01]\\d|2[0-3]):[0-5]\\d$/;\nlet valid=!!duration && datePattern.test(d.date) && timePattern.test(d.time);\nlet reason='';\nif (!duration) reason='Unknown service';\nelse if (!valid) reason='Please provide a valid date and Cairo time';\nif(valid){\n  const start=DateTime.fromISO(d.date+'T'+d.time,{zone:'Africa/Cairo'});\n  const end=start.plus({minutes:duration});\n  const now=DateTime.now().setZone('Africa/Cairo');\n  valid=start.isValid && end.isValid && start.toISODate()===d.date && start.toFormat('HH:mm')===d.time && start.weekday!==5 && start.hour>=10 && end.toISODate()===d.date && end.hour<=18 && end.diff(now,'hours').hours>=2 && start.diff(now,'days').days<=30;\n  if (!valid) reason='Outside booking policy: Saturday–Thursday, 10:00–18:00 Cairo, 2 hours notice, within 30 days';\n  else {d.start=start.toISO();d.end=end.toISO();}\n}\nreturn [{json:{...d,duration_minutes:duration??null,valid_booking_request:valid,validation_reason:reason}}];"
+      },
+      "name": "Validate requested service and time",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        912
+      ],
+      "notes": "Deterministic transformation; verify with test data."
+    },
+    {
+      "parameters": {
+        "jsCode": "const request=$('Validate requested service and time').first().json;\nconst result=$input.first().json;\nreturn [{json:{...request,available:result.available===true?true:result.available===false?false:null,calendar_result:result}}];"
+      },
+      "name": "Merge cleaning availability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2752,
+        752
+      ],
+      "notes": "Deterministic transformation; verify with test data."
+    },
+    {
+      "parameters": {
+        "jsCode": "const request=$('Validate requested service and time').first().json;\nconst result=$input.first().json;\nreturn [{json:{...request,available:result.available===true?true:result.available===false?false:null,calendar_result:result}}];"
+      },
+      "name": "Merge repairs availability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2784,
+        976
+      ],
+      "notes": "Deterministic transformation; verify with test data."
+    },
+    {
+      "parameters": {
+        "jsCode": "const booking=$('Appointment saved?').first().json;\nconst request=$('Normalize request').first().json;\nconst id=String(booking.id??'').trim();\nif(!id) throw new Error('Cannot log a customer without a saved calendar event ID');\nreturn [{json:{customer_id:'C-'+id,name:request.name,phone:request.phone,created_at_cairo:DateTime.now().setZone('Africa/Cairo').toISO(),notes:'Booked '+request.service}}];"
+      },
+      "name": "Prepare customers log row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5664,
+        624
+      ],
+      "notes": "Produces only fields present in the matching Google Sheet tab."
+    },
+    {
+      "parameters": {
+        "jsCode": "const booking=$('Appointment saved?').first().json;\nconst request=$('Normalize request').first().json;\nconst slot=$('Validate requested service and time').first().json;\nconst id=String(booking.id??'').trim();\nif(!id) throw new Error('Cannot log an appointment without a saved calendar event ID');\nreturn [{json:{booking_id:id,customer_id:'C-'+id,service:request.service,location:request.service==='cleaning'?'Cleaning':'Repairs & Batteries',calendar_id:request.service==='cleaning'?'CONFIGURE_EMAIL':'CONFIGURE_EMAIL',start_cairo:slot.start,end_cairo:slot.end,status:'confirmed',created_at_cairo:DateTime.now().setZone('Africa/Cairo').toISO(),request_id:request.request_id}}];"
+      },
+      "name": "Prepare appointments log row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6112,
+        624
+      ],
+      "notes": "Produces only fields present in the matching Google Sheet tab."
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;\nconst ref=String(d.request_id||$execution.id||Date.now());\nreturn [{json:{inquiry_id:'Q-'+ref,created_at_cairo:DateTime.now().setZone('Africa/Cairo').toISO(),customer_id:'',category:d.answer_category||d.intent||'general',question_summary:String(d.question||'').slice(0,500),answer_status:'agent_to_answer',name:d.name||'',phone:d.phone||''}}];"
+      },
+      "name": "Prepare inquiries log row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5680,
+        1952
+      ],
+      "notes": "Produces only fields present in the matching Google Sheet tab."
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;\nconst ref=String(d.request_id||$execution.id||Date.now());\nconst detail=typeof d.details==='string'?d.details:JSON.stringify(d.details??'');\nreturn [{json:{case_id:'CASE-'+ref,created_at_cairo:DateTime.now().setZone('Africa/Cairo').toISO(),customer_id:'',category:d.intent||'issue',issue_summary:String(detail||d.question||'').slice(0,500),status:'needs_human',assigned_to:'',resolved_at_cairo:'',name:d.name||'',phone:d.phone||''}}];"
+      },
+      "name": "Prepare cases log row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5888,
+        1248
+      ],
+      "notes": "Produces only fields present in the matching Google Sheet tab."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.demo_test === true && $json.confirmed === true && typeof $json.name === 'string' && $json.name.trim().length >= 2 && $json.phone === 'CONFIGURE_TEST_NUMBER' && /^demo-[a-z0-9-]{1,90}$/.test($json.request_id) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Fictional confirmed booking?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;\nconst id='nile'+Array.from(d.request_id).map(c=>c.codePointAt(0).toString(16).padStart(6,'0')).join('');\nreturn [{json:{...d,calendar_event_id:id}}];"
+      },
+      "name": "Build retry event ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "eventId": "={{ $json.calendar_event_id }}",
+        "options": {}
+      },
+      "name": "Look up existing demo booking",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1584,
+        640
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ !!$json.id }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Booking ID already exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:$('Build retry event ID').first().json}];"
+      },
+      "name": "Restore request after retry lookup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request=$('Build retry event ID').first().json;\nconst existing=$input.first().json;\nconst start=existing.start?.dateTime??'';\nconst end=existing.end?.dateTime??'';\nconst same=DateTime.fromISO(start).toMillis()===DateTime.fromISO(request.start).toMillis() && DateTime.fromISO(end).toMillis()===DateTime.fromISO(request.end).toMillis();\nreturn [{json:{status:same?'already_booked':'request_id_conflict',message:same?'This fictional booking already exists. No duplicate was created.':'This request ID belongs to a different appointment. Use a new request ID.',booking_id:existing.id,service:request.service,date:request.date,time:request.time,sms_status:'not_configured'}}];"
+      },
+      "name": "Compare existing booking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Return retry result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2304,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Calendar check succeeded?').first().json;\nconst rows=$input.all().map(i=>i.json);\nif(rows.some(e=>e.error)) return [{json:{...d,alternative_lookup_failed:true,alternatives:[]}}];\nconst day=DateTime.fromISO(d.date,{zone:'Africa/Cairo'});\nconst requested=DateTime.fromISO(d.start,{zone:'Africa/Cairo'});\nconst step=['battery','assessment'].includes(d.service)?30:60;\nconst duration=d.duration_minutes;\nconst events=rows.filter(e=>e.id && e.status!=='cancelled' && e.transparency!=='transparent').map(e=>({\n start:DateTime.fromISO(e.start?.dateTime??(e.start?.date+'T00:00:00'),{zone:'Africa/Cairo'}),\n end:DateTime.fromISO(e.end?.dateTime??(e.end?.date+'T00:00:00'),{zone:'Africa/Cairo'})\n})).filter(e=>e.start.isValid&&e.end.isValid);\nconst choices=[];\nfor(let minute=10*60;minute+duration<=18*60;minute+=step){\n const start=day.plus({minutes:minute});\n const end=start.plus({minutes:duration});\n if(start.toMillis()===requested.toMillis()||start.diffNow('hours').hours<2) continue;\n if(events.some(e=>start<e.end&&end>e.start)) continue;\n choices.push({date:d.date,time:start.toFormat('HH:mm'),start:start.toISO(),end:end.toISO()});\n}\nchoices.sort((a,b)=>Math.abs(DateTime.fromISO(a.start).toMillis()-requested.toMillis())-Math.abs(DateTime.fromISO(b.start).toMillis()-requested.toMillis()));\nreturn [{json:{...d,alternatives:choices.slice(0,3)}}];"
+      },
+      "name": "Calculate same-day openings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5136,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.alternative_lookup_failed === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Alternative calendar lookup failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5312,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "timeMin": "={{ $json.start }}",
+        "timeMax": "={{ $json.end }}",
+        "options": {}
+      },
+      "name": "Final calendar availability check",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        4096,
+        1024
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Protect against duplicates and conflicts').first().json;\nconst result=$input.first().json;\nreturn [{json:{...d,final_availability:result.available===true?'free':result.available===false?'busy':'error',calendar_result:result}}];"
+      },
+      "name": "Read final availability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4352,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.final_availability === 'free' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Final slot free?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4576,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.final_availability === 'error' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Final calendar error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "from": "",
+        "to": "={{ $('Normalize request').first().json.phone }}",
+        "message": "={{ 'Your Nile Auto reservation for ' + $('Normalize request').first().json.date + ' at ' + $('Normalize request').first().json.time + ' (Cairo time) is confirmed.' }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.vonage",
+      "typeVersion": 1,
+      "position": [
+        6480,
+        624
+      ],
+      "name": "Send an SMS",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sms_id",
+              "displayName": "sms_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_type",
+              "displayName": "message_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "provider_status",
+              "displayName": "provider_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requested_at_cairo",
+              "displayName": "requested_at_cairo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "delivered_at_cairo",
+              "displayName": "delivered_at_cairo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "failure_reason",
+              "displayName": "failure_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        6800,
+        624
+      ],
+      "name": "Sheets - SMS log",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json ?? {};\nconst msg = Array.isArray(raw.messages) ? (raw.messages[0] ?? {}) : raw;\nconst id = String(msg['message-id'] ?? msg.messageId ?? msg.message_id ?? '');\nconst status = msg.status ?? raw.status;\nconst error = raw.error?.message ?? raw.error ?? msg['error-text'] ?? msg.errorText ?? '';\nconst accepted = !error && (String(status) === '0' || (status == null && id.length > 0));\nconst request = $('Normalize request').first().json;\nconst booking = $('Appointment saved?').first().json;\nreturn [{ json: {\n  sms_id: id,\n  booking_id: String(booking.id ?? ''),\n  phone: request.phone,\n  message_type: 'booking_confirmation',\n  provider_status: accepted ? 'accepted' : 'failed',\n  requested_at_cairo: DateTime.now().setZone('Africa/Cairo').toISO(),\n  delivered_at_cairo: '',\n  failure_reason: accepted ? '' : String(error || (status == null ? 'No acceptance ID returned' : 'Vonage status ' + status))\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6640,
+        624
+      ],
+      "name": "Prepare SMS log row"
+    }
+  ],
+  "connections": {
+    "Incoming agent request": {
+      "main": [
+        [
+          {
+            "node": "Normalize request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking request?": {
+      "main": [
+        [
+          {
+            "node": "Validate requested service and time",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "General question?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Details and business hours valid?": {
+      "main": [
+        [
+          {
+            "node": "Fictional confirmed booking?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask for missing or valid details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleaning service?": {
+      "main": [
+        [
+          {
+            "node": "Cleaning calendar - check slot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Repairs calendar - check slot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleaning calendar - check slot": {
+      "main": [
+        [
+          {
+            "node": "Merge cleaning availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repairs calendar - check slot": {
+      "main": [
+        [
+          {
+            "node": "Merge repairs availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar check succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Requested slot free?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture complaint refund or issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requested slot free?": {
+      "main": [
+        [
+          {
+            "node": "Customer confirmed booking?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find alternatives in same calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find alternatives in same calendar": {
+      "main": [
+        [
+          {
+            "node": "Calculate same-day openings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alternative slots found?": {
+      "main": [
+        [
+          {
+            "node": "Offer available alternatives",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No slots - ask for another day",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Customer confirmed booking?": {
+      "main": [
+        [
+          {
+            "node": "Protect against duplicates and conflicts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return free slot - await caller choice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Protect against duplicates and conflicts": {
+      "main": [
+        [
+          {
+            "node": "Safe to create booking?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Safe to create booking?": {
+      "main": [
+        [
+          {
+            "node": "Final calendar availability check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return existing booking or changed slot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create in cleaning calendar?": {
+      "main": [
+        [
+          {
+            "node": "Cleaning calendar - create appointment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Repairs calendar - create appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleaning calendar - create appointment": {
+      "main": [
+        [
+          {
+            "node": "Appointment saved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repairs calendar - create appointment": {
+      "main": [
+        [
+          {
+            "node": "Appointment saved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Appointment saved?": {
+      "main": [
+        [
+          {
+            "node": "Prepare customers log row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture complaint refund or issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - customer record": {
+      "main": [
+        [
+          {
+            "node": "Prepare appointments log row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - appointment record": {
+      "main": [
+        [
+          {
+            "node": "Send an SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS - booking confirmation": {
+      "main": [
+        [
+          {
+            "node": "SMS accepted for sending?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS accepted for sending?": {
+      "main": [
+        [
+          {
+            "node": "Sheets - SMS status sent or pending",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheets - SMS failed follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - SMS status sent or pending": {
+      "main": [
+        [
+          {
+            "node": "Return confirmed booking and SMS status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - SMS failed follow-up": {
+      "main": [
+        [
+          {
+            "node": "Return confirmed booking and SMS status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "General question?": {
+      "main": [
+        [
+          {
+            "node": "General service information",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Repair question?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair question?": {
+      "main": [
+        [
+          {
+            "node": "Repair scope and assessment information",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Battery question?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Battery question?": {
+      "main": [
+        [
+          {
+            "node": "Battery service information",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture complaint refund or issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "General service information": {
+      "main": [
+        [
+          {
+            "node": "Answer supported by business documents?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair scope and assessment information": {
+      "main": [
+        [
+          {
+            "node": "Answer supported by business documents?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Battery service information": {
+      "main": [
+        [
+          {
+            "node": "Answer supported by business documents?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer supported by business documents?": {
+      "main": [
+        [
+          {
+            "node": "Prepare inquiries log row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture complaint refund or issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - inquiry log": {
+      "main": [
+        [
+          {
+            "node": "Return guidance to voice agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture complaint refund or issue": {
+      "main": [
+        [
+          {
+            "node": "Prepare cases log row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - human follow-up case": {
+      "main": [
+        [
+          {
+            "node": "Notify staff - channel to choose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify staff - channel to choose": {
+      "main": [
+        [
+          {
+            "node": "Return follow-up acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize request": {
+      "main": [
+        [
+          {
+            "node": "Booking request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate requested service and time": {
+      "main": [
+        [
+          {
+            "node": "Details and business hours valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge cleaning availability": {
+      "main": [
+        [
+          {
+            "node": "Calendar check succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge repairs availability": {
+      "main": [
+        [
+          {
+            "node": "Calendar check succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare customers log row": {
+      "main": [
+        [
+          {
+            "node": "Sheets - customer record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare appointments log row": {
+      "main": [
+        [
+          {
+            "node": "Sheets - appointment record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare inquiries log row": {
+      "main": [
+        [
+          {
+            "node": "Sheets - inquiry log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare cases log row": {
+      "main": [
+        [
+          {
+            "node": "Sheets - human follow-up case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fictional confirmed booking?": {
+      "main": [
+        [
+          {
+            "node": "Build retry event ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cleaning service?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build retry event ID": {
+      "main": [
+        [
+          {
+            "node": "Look up existing demo booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Look up existing demo booking": {
+      "main": [
+        [
+          {
+            "node": "Booking ID already exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking ID already exists?": {
+      "main": [
+        [
+          {
+            "node": "Compare existing booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Restore request after retry lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore request after retry lookup": {
+      "main": [
+        [
+          {
+            "node": "Cleaning service?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare existing booking": {
+      "main": [
+        [
+          {
+            "node": "Return retry result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate same-day openings": {
+      "main": [
+        [
+          {
+            "node": "Alternative calendar lookup failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alternative calendar lookup failed?": {
+      "main": [
+        [
+          {
+            "node": "Capture complaint refund or issue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alternative slots found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final calendar availability check": {
+      "main": [
+        [
+          {
+            "node": "Read final availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read final availability": {
+      "main": [
+        [
+          {
+            "node": "Final slot free?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final slot free?": {
+      "main": [
+        [
+          {
+            "node": "Create in cleaning calendar?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final calendar error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final calendar error?": {
+      "main": [
+        [
+          {
+            "node": "Capture complaint refund or issue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find alternatives in same calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an SMS": {
+      "main": [
+        [
+          {
+            "node": "Prepare SMS log row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - SMS log": {
+      "main": [
+        [
+          {
+            "node": "Return confirmed booking and SMS status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare SMS log row": {
+      "main": [
+        [
+          {
+            "node": "Sheets - SMS log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}
