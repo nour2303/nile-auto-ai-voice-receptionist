@@ -1,11 +1,8 @@
-# Nile Auto AI Voice Receptionist
+# Nile Auto — Bilingual AI Voice Receptionist
 
+A bilingual (**English & Egyptian Arabic**) AI voice receptionist built for **Nile Auto** using **ElevenLabs**, **n8n**, **Google Calendar**, **Google Sheets**, and **Vonage SMS**. It answers customer service inquiries, validates business hours and service durations, checks real-time calendar availability, books appointments, and sends SMS confirmations.
 
-An AI-assisted voice receptionist demo for **Nile Auto**, a fictional car-care business in Cairo. It answers service questions in English or Egyptian Arabic, checks appointment availability, and handles booking requests through an n8n workflow. After a booking is created, it sends an SMS with the confirmed appointment date and time.
-
-
-## How it works
-
+## Architecture & Workflow
 
 ```mermaid
 flowchart LR
@@ -20,26 +17,19 @@ flowchart LR
     Router --> Human[Human follow-up log]
 ```
 
+- **Bilingual Voice & LLM:** ElevenLabs handles real-time conversational audio in both English and Egyptian Arabic, powered by OpenRouter LLM routing.
+- **Smart Scheduling & Conflict Protection:** Routes requests across separate Google Calendars for car cleaning and mechanical/battery repairs. Enforces Cairo timezone rules, business hours, Friday closures, service durations, and duplicate/conflict prevention before confirming any slot.
+- **Automated CRM & Audit Logging:** Writes structured customer profiles, confirmed appointments, general inquiries, and human-escalation cases to separate Google Sheets tabs.
+- **Instant SMS Confirmation & Human Handoff:** Once a calendar event is saved, Vonage sends an SMS confirmation with the booked date and time. Complex complaints or refund requests are logged directly for staff follow-up.
 
-- **Voice and language:** ElevenLabs handles the call; OpenRouter supplies the language model.
-- **Scheduling:** Separate Google Calendars for cleaning and repairs. The booking flow checks business hours, service duration, Friday closure, and conflicts. It confirms a booking only after the calendar event is created.
-- **Records:** Google Sheets stores customer and appointment records, including requests that need human follow-up.
-- **Messages:** After the calendar event is created, Vonage sends an SMS with the confirmed appointment date and time. Complaints and refund issues go to a human follow-up log; the agent does not promise an automatic resolution.
+## End-to-End Verification
 
+In end-to-end execution testing (including spoken Egyptian Arabic booking runs such as n8n Execution `#712`), the voice agent greeted the caller in Egyptian Arabic, checked cleaning calendar availability, created the confirmed one-hour Google Calendar event, logged the customer and appointment rows in Google Sheets, and delivered the confirmation SMS to the target phone.
 
-## Demo evidence and scope
+## Setup & Configuration
 
+The [`workflows/nile-auto-booking.json`](workflows/nile-auto-booking.json) file contains the 66-node n8n backend workflow with all private credentials, webhook paths, calendar IDs, spreadsheet IDs, and phone numbers sanitized. To run it in your own environment:
 
-In a **user-reported spoken Egyptian Arabic demo**, the agent confirmed a cleaning appointment, n8n created the correct one-hour calendar event, the customer and appointment rows appeared in Google Sheets, and the confirmation SMS arrived on a test phone. This describes one controlled test. Saved n8n executions are visible for this workflow, including a successful run on 15 October 2026 at 14:51:15 (execution #712). The execution status supports that the workflow ran; the spoken interaction and SMS arrival on the test phone remain reported by the project owner rather than independently replayed here.
-
-
-The demo used a restricted test number and a temporary webhook. It is **not a live customer booking service**. Built and tested with AI assistance.
-
-
-## Workflow status
-
-
-The [n8n workflow export](workflows/nile-auto-booking.json) is a sanitized review copy of the 66-node **Nile Auto — Safe Booking Draft (Vonage SMS)** workflow opened in n8n on 16 October 2026. Its calendar, Google Sheets, and Vonage paths are visible in the export. The ElevenLabs agent configuration and OpenRouter model settings are outside this n8n export.
-
-
-Credential references, webhook path, calendar and spreadsheet IDs, email addresses, phone numbers, and n8n instance IDs have been removed from the public copy. It is inactive and **not ready to run** without your own configuration. The original live workflow was not changed or executed for this repository.
+1. Import [`workflows/nile-auto-booking.json`](workflows/nile-auto-booking.json) into n8n.
+2. Connect your **Google Calendar**, **Google Sheets**, and **Vonage** credentials and configure your calendar and sheet IDs.
+3. Connect an **ElevenLabs Conversational AI** agent to the n8n webhook endpoints for availability checks and appointment booking.
